@@ -1,0 +1,41 @@
+#!/bin/sh
+
+#
+# check_swift_object_replicator
+#
+# Checks to see when the last time object-replicator posted a message in
+# syslog with 'remain' in the line. Takes 2 arguments for thresholds that are
+# ints representing the number of seonds since last reported; $1 = WARN and
+# $2 = CRITICAL
+#
+# Copyright 2017 Canonical Ltd.
+#
+# Authors:
+#  Graham Burgess <graham.burgess@canonical.com>
+#
+
+WARN=${1:-600}
+CRIT=${2:-900}
+
+TIME_SINCE=$(grep "object-replicator.*remain" /var/log/syslog | tail -1 | \
+  sed -e 's/^\([A-Za-z]\{3\} [0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*/\1/' | \
+  awk '$1=(match("JanFebMarAprMayJunJulAugSepOctNovDec",$1)+2)/3 { printf "2017-%02d-%02d %s\n",$1,$2,$3}' | \
+  awk -F, '{ gsub(/[-:]/," ",$1);d2=mktime($1); d1=systime(); print (d1-d2)/60;}')
+
+if [ -z $TIME_SINCE ]; then
+  echo "CRITICAL: opject-replicator not reported in the current log"
+  exit 2
+fi
+
+if [ $(echo ${TIME_SINCE}">="${CRIT} | bc) -eq 1  ]; then
+  echo "CRITICAL: object-replicator not reporting in for ${TIME_SINCE} secs"
+  exit 2
+fi
+
+if [ $(echo ${TIME_SINCE}">="${WARN} | bc) -eq 1 ]; then
+  echo "WARNING: object-replicator not reporting in for ${TIME_SINCE} secs"
+  exit 1
+fi
+
+echo "OK: object-replicator reported in in ${TIME_SINCE} secs"
+exit 1

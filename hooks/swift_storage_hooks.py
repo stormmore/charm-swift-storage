@@ -191,6 +191,9 @@ def update_nrpe_config():
     rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'nrpe-external-master',
                        'check_swift_service'),
           os.path.join(NAGIOS_PLUGINS, 'check_swift_service'))
+    rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'nrpe-external-master',
+                       'check_swift_object_replicator'),
+          os.path.join(NAGIOS_PLUGINS, 'check_swift_object_replicator'))
     rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'sudo',
                        'swift-storage'),
           os.path.join(SUDOERS_D, 'swift-storage'))
@@ -207,6 +210,15 @@ def update_nrpe_config():
                     ' {%s}' % current_unit,
         check_cmd='check_swift_storage.py {}'.format(
             config('nagios-check-params'))
+    )
+    # check the object replicator
+    nrpe_setup.add_check(
+        shortname='swift_object_replicator',
+        description='Check swift object replicator is reporting remaining time'
+                    ' {%s}' % current_unit,
+        # TO DO: The params for this check should be added to config, defaults to
+        # WWARN at 10 mins and CRIT at 15 mins
+        check_cmd='check_swift_object_replicator 600 900'
     )
     nrpe.add_init_service_checks(nrpe_setup, SWIFT_SVCS, current_unit)
     nrpe_setup.write()
