@@ -1,0 +1,3 @@
+Defaults: nagios !requiretty
+
+nagios ALL=(ubuntu) NOPASSWD:/usr/bin/awk /object-replicator*/var/log/syslog

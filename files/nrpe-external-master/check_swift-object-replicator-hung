@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # check_swift_object_replicator
 #
@@ -13,6 +13,8 @@
 #
 # It adds the current year to the timestamp
 #
+# TO-DO: probably should change the arguments in to flag options
+#
 # Copyright 2017 Canonical Ltd.
 #
 # Authors:
@@ -25,13 +27,18 @@ LOG_FILE=${3:-/var/log/syslog}
 
 # Calculate last time object-replicator put a log entery in for remaining rsync
 # time in LOG_FILE
-DRIFT=$(awk '/object-replicator.*remain/ { m = $0 }
+DRIFT=$(sudo -u ubuntu awk '/object-replicator.*remain/ { m = $0 };
     END {
-      split(m, arr, " ")
-      ts[1] = (match("JanFebMarAprMayJunJulAugSepOctNovDec",arr[1])+2)/3;
+      split(m, ts, " ");
+      ts[1] = (match("JanFebMarAprMayJunJulAugSepOctNovDec",ts[1])+2)/3;
       gsub(/[:]/, " ", ts[3]);
       print systime() - mktime(strftime("%Y")" "ts[1]" "ts[2]" "ts[3]);
     }' ${LOG_FILE})
+
+if [ -z $DRIFT ]; then
+  echo "UNKNOWN: object-replicator has not reported in to latest log: ${LOG_FILE}"
+  exit 3
+fi
 
 if [ ${DRIFT} -ge ${CRIT} ]; then
   echo "CRITICAL: object-replicator not reported in for at least ${DRIFT} secs"
@@ -44,4 +51,4 @@ if [ ${DRIFT} -ge ${WARN} ]; then
 fi
 
 echo "OK: object-replicator reported in last ${DRIFT} secs ago"
-exit 1
+exit 0
