@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+# check_swift_object_replicator
+#
+# Checks to see when the last time object-replicator posted a message in
+# syslog with 'remain' in the line. Takes 2 arguments for thresholds that are
+# ints representing the number of seonds since last reported; $1 = WARN and
+# $2 = CRITICAL
+#
+# Expects log entries to start with the timestamp in the format:
+#
+#   %b %d %H:%M:%S <host> ...
+#
+# It adds the current year to the timestamp
+#
+# TO-DO: probably should change the arguments in to flag options
+#
+# Copyright 2017 Canonical Ltd.
+#
+# Authors:
+#  Graham Burgess <graham.burgess@canonical.com>
+#
+
+WARN=${1:-600}
+CRIT=${2:-900}
+LOG_FILE=${3:-/var/log/syslog}
+
+# Calculate last time object-replicator put a log entery in for remaining rsync
+# time in LOG_FILE
+DRIFT=$(sudo -u ubuntu awk '/object-replicator.*remain/ { m = $0 };
+    END {
+      split(m, ts, " ");
+      ts[1] = (match("JanFebMarAprMayJunJulAugSepOctNovDec",ts[1])+2)/3;
+      gsub(/[:]/, " ", ts[3]);
+      print systime() - mktime(strftime("%Y")" "ts[1]" "ts[2]" "ts[3]);
+    }' ${LOG_FILE})
+
+if [ -z $DRIFT ]; then
+  echo "UNKNOWN: object-replicator has not reported in to latest log: ${LOG_FILE}"
+  exit 3
+fi
+
+if [ ${DRIFT} -ge ${CRIT} ]; then
+  echo "CRITICAL: object-replicator not reported in for at least ${DRIFT} secs"
+  exit 2
+fi
+
+if [ ${DRIFT} -ge ${WARN} ]; then
+  echo "WARNING: object-replicator not reported in for at least ${DRIFT} secs"
+  exit 1
+fi
+
+echo "OK: object-replicator reported in last ${DRIFT} secs ago"
+exit 0

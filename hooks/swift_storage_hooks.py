@@ -191,9 +191,15 @@ def update_nrpe_config():
     rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'nrpe-external-master',
                        'check_swift_service'),
           os.path.join(NAGIOS_PLUGINS, 'check_swift_service'))
+    rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'nrpe-external-master',
+                       'check_swift-object-replicator-hung'),
+          os.path.join(NAGIOS_PLUGINS, 'check_swift-object-eplicator-hung'))
     rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'sudo',
                        'swift-storage'),
           os.path.join(SUDOERS_D, 'swift-storage'))
+    rsync(os.path.join(os.getenv('CHARM_DIR'), 'files', 'sudo',
+                       'swift-object-replicator-hung'),
+          os.path.join(SUDOERS_D, 'swift-object-replicator-hung'))
 
     # Find out if nrpe set nagios_hostname
     hostname = nrpe.get_nagios_hostname()
@@ -207,6 +213,15 @@ def update_nrpe_config():
                     ' {%s}' % current_unit,
         check_cmd='check_swift_storage.py {}'.format(
             config('nagios-check-params'))
+    )
+    # check the object replicator
+    nrpe_setup.add_check(
+        shortname='swift-object-replicator-hung',
+        description='Check swift object replicator is reporting remaining time'
+                    ' {%s}' % current_unit,
+        # TO DO: The params for this check should be added to config, defaults to
+        # WWARN at 10 mins and CRIT at 15 mins
+        check_cmd='check_swift-object-eplicator-hung 600 900'
     )
     nrpe.add_init_service_checks(nrpe_setup, SWIFT_SVCS, current_unit)
     nrpe_setup.write()
